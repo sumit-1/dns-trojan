@@ -1,0 +1,103 @@
+---
+system:
+  project_name: dns-router
+
+logging:
+  stdout:
+    enable: true        # log to stdout or not
+    format:             # log format, default: '[%(asctime)s %(levelname)s %(name)s] %(message)s'
+    level:              # log level, default: 0
+  file:
+    enable: false       # log to file or not
+    format:             # log format, default: '[%(asctime)s %(levelname)s %(name)s] %(message)s'
+    level:              # log level, default: 0
+    path:               # log file path, default: ${project_name}.yml
+    rotating:
+      enable: true      # enable rotating or not
+      when: MIDNIGHT    # rotating condition
+      backup_count: 60  # backup count
+
+cache:
+  enable: false # enable dns cache or not, this would cache the 'FORWARD'ed responses until ttl
+  memcached_addr: '127.0.0.1:11211' # dns-router uses memcached to cache responses
+
+dns_servers:
+  - url: udp://192.168.1.107 # dns server url, format: scheme://listen_address:port
+    rules:
+      # translate a PTR dns request with a complete match with "1.0.0.172.in-addr.arpa." to "dns.local"
+      - domain: 107.1.168.192.in-addr.arpa.
+        domain-type: FQDN
+        type: PTR
+        value: ns1.hidden.com
+
+      # Name server A Record
+      - domain: ns1.hidden
+        domain-type: PREFIX
+        type: A
+        value: 192.168.1.107
+
+      # SOA Record
+      - domain: hidden
+        domain-type: PREFIX
+        type: SOA
+        value:
+          - 'ns1.hidden.com. ksiiitm@gmail.com 2019031901 30 30 604800 86400'
+
+      # Name Server
+      - domain: hidden
+        domain-type: PREFIX
+        type: NS
+        value:
+          - ns1.hidden.com
+
+      # Name Server
+      - domain: hidden
+        domain-type: KEYWORD
+        type: NS
+        value:
+          - ns1.hidden.com
+
+      # MYOHST hostname specific Malware
+      # Ping Received
+      - domain: y.MYHOST.malware.hidden
+        domain-type: KEYWORD
+        type: A
+        value: 127.0.0.1
+
+      # Execute from value. Base64
+      - domain: .cname.MYHOST.malware.hidden
+        domain-type: KEYWORD
+        type: CNAME
+        value: Y2FsYw==
+
+      # Download and Execute from url. Malicious .bat code is hosted on http://192.168.1.13:8080/command.txt
+      - domain: .exec.myhost.malware.hidden
+        domain-type: KEYWORD
+        type: A
+        value: 192.168.1.13
+        
+      # Catch all malware
+      - domain: .malware.hidden
+        domain-type: KEYWORD
+        type: A
+        value: 127.0.0.1
+        
+      # Catch all malware
+      - domain: .malware.hidden
+        domain-type: KEYWORD
+        type: CNAME
+        value: hidden.com
+
+      # Catch all domain requests (may be genuine)
+      - domain: hidden
+        domain-type: KEYWORD
+        type: A
+        value: 192.168.1.107
+
+      # Forward all others.
+      - domain: '*'
+        domain-type: WILDCARD
+        type: FORWARD
+        value: udp://8.8.8.8
+
+...
